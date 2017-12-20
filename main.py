@@ -4,7 +4,6 @@ from lxml import etree
 import urllib2
 import json
 import sys
-
 site_with_price = 'https://www.ec2instances.info'
 
 AWS_ACCESS_KEY_ID = ''
@@ -25,8 +24,6 @@ regions_map = {'us-east-1': 'N.Virginia',
                'ap-south-1': 'Mumbai',
                'sa-east-1': 'Sao Paulo'}
 
-
-
 def get_instance_price(region, instance_type):
     response = urllib2.urlopen(site_with_price)
     html = response.read()
@@ -46,11 +43,10 @@ def get_instance_price(region, instance_type):
 
 try:
     f = open('aws_info.csv', 'w')
-    f.write("Region,Instance ID,Name,Instance type,USD/hour,USD/31days,State,Public IP,Key name,EBS Optimized,Volume sizes(GB)\n")
+    f.write("Region,Instance ID,Name,Instance type,Availability Zone,USD/hour,USD/31days,State,Public IP,Key name,EBS Optimized,Volume sizes(GB)\n")
 
     for region in regions_map.iterkeys():
-        if region != 'us-west-1':
-            continue
+        print(region)
         client = boto3.client('ec2',
                               aws_access_key_id=AWS_ACCESS_KEY_ID,
                               aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
@@ -58,8 +54,6 @@ try:
         response = client.describe_instances()
         for reservation in response['Reservations']:
             for instance in reservation['Instances']:
-                print instance
-                sys.exit(1)
                 for tag in instance['Tags']:
                     if tag['Key'] == 'Name':
                         name_tag = tag['Value']
@@ -76,12 +70,14 @@ try:
                 ec2_instance = ec2.Instance(instance['InstanceId'])
                 volumes = ec2_instance.volumes.all()
                 instance_volume_sizes = []
+                print(instance_id)
                 for v in volumes:
                     instance_volume_sizes.append(v.size)
                 f.write("{},{},{},{},{},{},{},{},{},{},{},{}\n".format(regions_map[region], instance_id, name_tag,
                                                                  instance_type, instance_az, instance_price,
                                                                  instance_price_per_month, state, public_ip, key_name,
-                                                                 ebsoptimized, str(instance_volume_sizes)))
+                                                                 ebsoptimized, str(instance_volume_sizes).replace(',', ' ')
+                                                                ))
 except IOError as e:
     print "I/O error({0}): {1}".format(e.errno, e.strerror)
 except ValueError:
@@ -91,3 +87,4 @@ except:
     raise
 finally:
     f.close()
+print "--- exit ---"
